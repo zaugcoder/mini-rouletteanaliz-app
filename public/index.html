@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <title>Рулетка Стол</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    body { background: #000; color: #FFF; font-family: Arial; text-align: center; padding: 10px; }
+    .table { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; max-width: 300px; margin: 20px auto; }
+    .cell { background: #333; border: 1px solid #666; padding: 10px; cursor: pointer; border-radius: 5px; }
+    .cell:hover { background: #FFA500; }
+    .zero { background: #00FF00; grid-column: 1 / -1; } /* 0 занимает всю строку */
+    .history { margin: 20px; font-size: 12px; overflow: auto; max-height: 100px; }
+    .top3 { margin: 20px; font-size: 16px; background: #222; padding: 10px; border-radius: 5px; }
+    button { background: #FFA500; color: #000; border: none; padding: 10px 20px; margin: 5px; border-radius: 5px; cursor: pointer; }
+    button:hover { background: #FF8C00; }
+  </style>
+</head>
+<body>
+  <h1>🎰 Стол Рулетки</h1>
+  <p>Кликни число — добавь в историю (обновит базу бота)</p>
+  <div class="table" id="table"></div>
+  <div class="history">
+    Последние 10: <span id="histList"></span>
+  </div>
+  <div class="top3" id="top3">Топ-3 после последнего: ...</div>
+  <button onclick="analyze()">Анализ</button>
+  <button onclick="clearHistory()">Очистить</button>
+
+  <script>
+    const WebApp = Telegram.WebApp;
+    WebApp.ready();
+    WebApp.expand();
+
+    let history = [];
+    const WORKER_URL = 'https://analiz-bot.zaugoldima.workers.dev';  // Твой Worker URL
+
+    // Стандартный стол рулетки (3 ряда, 0 сверху)
+    const numbers = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
+    const table = document.getElementById('table');
+    numbers.forEach(num => {
+      const cell = document.createElement('div');
+      cell.className = num === 0 ? 'cell zero' : 'cell';
+      cell.textContent = num;
+      cell.onclick = () => addNumber(num);
+      table.appendChild(cell);
+    });
+
+    function addNumber(num) {
+      const normalized = num === 0 ? '00' : num.toString().padStart(2, '0');
+      history.push(normalized);
+      updateHistory();
+      // Синхронизируем с ботом (Worker)
+      fetch(WORKER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'add_number', number: normalized })
+      }).then(r => r.json()).then(data => {
+        if (data.success) WebApp.showAlert(`Добавлено: ${num} (база обновлена)`);
+      });
+    }
+
+    function updateHistory() {
+      document.getElementById('histList').textContent = history.slice(-10).join(' ');
+    }
+
+    async function analyze() {
+      const response = await fetch(WORKER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'get_top_after_last' })
+      });
+      const data = await response.json();
+      if (data.top) {
+        document.getElementById('top3').innerHTML = `Топ-3 после последнего: ${data.top.map(([n, c]) => `${n} (${c})`).join(', ')} (всего: ${data.total})`;
+      } else {
+        document.getElementById('top3').textContent = 'Нет истории для анализа.';
+      }
+    }
+
+    async function clearHistory() {
+      history = [];
+      updateHistory();
+      await fetch(WORKER_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'clear_history' })
+      });
+      WebApp.showAlert('История очищена!');
+    }
+
+    // Загрузка истории из Worker при запуске
+    fetch(WORKER_URL, { method: 'GET' }).then(r => r.json()).then(data => {
+      history = data.history || [];
+      updateHistory();
+    });
+  </script>
+</body>
+</html>
