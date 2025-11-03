@@ -35,14 +35,14 @@
   </style>
 </head>
 <body>
-  <h1>🎰 Стол Рулетки</h1>
+  <h1>Стол Рулетки</h1>
   <div class="top3" id="top3">Введите значение</div>
   <div class="table" id="table"></div>
   <script>
     const WebApp = Telegram.WebApp;
     WebApp.ready();
     WebApp.expand();
-    const WORKER_URL = 'https://analiz-bot.zaugoldima.workers.dev'; // Твой Worker URL
+    const WORKER_URL = 'https://analiz-bot.zaugoldima.workers.dev';
     const numbers = [
       {num: 1, color: 'red'}, {num: 2, color: 'black'}, {num: 3, color: 'red'}, {num: 4, color: 'black'}, {num: 5, color: 'red'}, {num: 6, color: 'black'},
       {num: 7, color: 'red'}, {num: 8, color: 'black'}, {num: 9, color: 'red'}, {num: 10, color: 'black'}, {num: 11, color: 'black'}, {num: 12, color: 'red'},
@@ -86,16 +86,15 @@
         const text = await response.text();
         if (!response.ok) throw new Error(`Сеть: ${response.status} — ${text}`);
         const data = JSON.parse(text);
-        // Увеличили время расчёта до 1.5 секунд (1500 мс)
+        clearInterval(interval);
         setTimeout(() => {
-          clearInterval(interval);
           if (data.top && data.top.length > 0) {
             const formattedTop = data.top.map(([n]) => n.length === 2 && n.startsWith('0') ? n.slice(1) : n).join(' ');
             top3.innerHTML = `Ответ: ${formattedTop}`;
           } else {
             top3.innerHTML = 'Нет данных для анализа';
           }
-        }, 1500);
+        }, 1000); // 1 секунда задержки
       } catch (e) {
         clearInterval(interval);
         top3.innerHTML = 'Ошибка расчёта';
