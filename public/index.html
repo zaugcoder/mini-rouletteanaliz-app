@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Рулетка Стол</title>
+  <title>Рулетка</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
     body { background: linear-gradient(to bottom, #0F172A, #1E293B); color: #FFF; font-family: system-ui; text-align: center; margin: 0; height: 100vh; overflow-y: auto; }
-    h1 { font-size: 28px; margin: 12px 0 6px; }
-    .top3 { font-size: 28px; font-weight: bold; background: #1E293B; padding: 12px 18px; border-radius: 28px; max-width: 350px; margin: 12px auto; min-height: 56px; color: #F59E0B; }
-    .table { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; max-width: 300px; margin: 12px auto; }
-    .cell { background: #333; border-radius: 50%; font-size: 14px; font-weight: 600; aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; }
+    h1 { font-size: 28px; margin: 12px; }
+    .top3 { font-size: 28px; font-weight: bold; background: #1E293B; padding: 12px; border-radius: 28px; max-width: 350px; margin: 12px auto; color: #F59E0B; }
+    .table { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; max-width: 300px; margin: auto; }
+    .cell { background: #333; border-radius: 50%; font-size: 14px; aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; }
     .cell:hover { background: #F59E0B !important; color: #000; transform: scale(1.05); }
     .red { background: #EF4444; color: #FFF; }
     .black { background: #000; color: #FFF; }
@@ -19,8 +19,8 @@
   </style>
 </head>
 <body>
-  <h1>🎰 Стол Рулетки</h1>
-  <div class="top3" id="top3">Наиболее вероятные: ...</div>
+  <h1>🎰 Рулетка</h1>
+  <div class="top3" id="top3">Расчет...</div>
   <div class="table" id="table"></div>
 
   <script>
@@ -87,7 +87,7 @@
       } catch (e) {
         clearInterval(interval);
         top3.innerHTML = 'Ошибка';
-        WebApp.showAlert(`Ошибка: ${e.message}\nЛоги Worker проверь!`);
+        WebApp.showAlert(`Ошибка: ${e.message}\nОткрой Dashboard > Workers > Logs для деталей!`);
       }
     }
   </script>
