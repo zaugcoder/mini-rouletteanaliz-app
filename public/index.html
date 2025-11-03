@@ -6,30 +6,30 @@
   <title>Рулетка Стол</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
-    body { 
-      background: linear-gradient(to bottom, #0F172A, #1E293B); color: #FFF; font-family: system-ui, -apple-system, sans-serif; text-align: center; padding: 10px 0; 
+    body {
+      background: linear-gradient(to bottom, #0F172A, #1E293B); color: #FFF; font-family: system-ui, -apple-system, sans-serif; text-align: center; padding: 10px 0;
       margin: 0; height: 100vh; overflow-y: auto; font-weight: 500;
     }
     h1 { font-size: 28px; margin: 12px 0 6px; font-weight: 600; }
-    .top3 { 
-      margin: 12px auto; font-size: 28px; font-weight: bold; background: #1E293B; padding: 12px 18px; border-radius: 28px; 
+    .top3 {
+      margin: 12px auto; font-size: 28px; font-weight: bold; background: #1E293B; padding: 12px 18px; border-radius: 28px;
       max-width: 350px; text-align: center; min-height: 56px; color: #F59E0B;
     }
-    .table { 
-      display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; max-width: 300px; margin: 12px auto; 
+    .table {
+      display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; max-width: 300px; margin: 12px auto;
       padding: 6px; background: transparent;
     }
-    .cell { 
-      background: #333; border: none; padding: 0; cursor: pointer; border-radius: 50%; 
-      font-size: 14px; font-weight: 600; aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center; 
+    .cell {
+      background: #333; border: none; padding: 0; cursor: pointer; border-radius: 50%;
+      font-size: 14px; font-weight: 600; aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center;
       transition: background 0.2s, transform 0.2s;
     }
     .cell:hover { background: #F59E0B !important; color: #000; transform: scale(1.05); }
     .red { background: #EF4444; color: #FFF; }
     .black { background: #000000; color: #FFF; }
-    .green { 
-      background: #22C55E; color: #000; border-radius: 50px; aspect-ratio: 2/1; grid-column: span 1; 
-      font-size: 18px; margin: 12px auto 0; width: 90px; 
+    .green {
+      background: #22C55E; color: #000; border-radius: 50px; aspect-ratio: 2/1; grid-column: span 1;
+      font-size: 18px; margin: 12px auto 0; width: 90px;
     }
     .green-container { display: flex; justify-content: center; gap: 4px; grid-column: 1 / -1; }
   </style>
@@ -38,14 +38,11 @@
   <h1>🎰 Стол Рулетки</h1>
   <div class="top3" id="top3">Введите значение</div>
   <div class="table" id="table"></div>
-
   <script>
     const WebApp = Telegram.WebApp;
     WebApp.ready();
     WebApp.expand();
-
-    const WORKER_URL = 'https://analiz-bot.zaugoldima.workers.dev';  // Твой Worker URL
-
+    const WORKER_URL = 'https://analiz-bot.zaugoldima.workers.dev'; // Твой Worker URL
     const numbers = [
       {num: 1, color: 'red'}, {num: 2, color: 'black'}, {num: 3, color: 'red'}, {num: 4, color: 'black'}, {num: 5, color: 'red'}, {num: 6, color: 'black'},
       {num: 7, color: 'red'}, {num: 8, color: 'black'}, {num: 9, color: 'red'}, {num: 10, color: 'black'}, {num: 11, color: 'black'}, {num: 12, color: 'red'},
@@ -54,10 +51,8 @@
       {num: 25, color: 'red'}, {num: 26, color: 'black'}, {num: 27, color: 'red'}, {num: 28, color: 'black'}, {num: 29, color: 'black'}, {num: 30, color: 'red'},
       {num: 31, color: 'black'}, {num: 32, color: 'red'}, {num: 33, color: 'black'}, {num: 34, color: 'red'}, {num: 35, color: 'black'}, {num: 36, color: 'red'}
     ];
-
     const table = document.getElementById('table');
     const top3 = document.getElementById('top3');
-
     numbers.forEach(item => {
       const cell = document.createElement('div');
       cell.className = `cell ${item.color}`;
@@ -65,7 +60,6 @@
       cell.onclick = () => analyzeNumber(item.num);
       table.appendChild(cell);
     });
-
     const greenContainer = document.createElement('div');
     greenContainer.className = 'green-container';
     [{num: 0, color: 'green'}, {num: '00', color: 'green'}].forEach(item => {
@@ -76,7 +70,6 @@
       greenContainer.appendChild(cell);
     });
     table.appendChild(greenContainer);
-
     async function analyzeNumber(num) {
       let x = (num === 0 || num === '00') ? '00' : num.toString().padStart(2, '0');
       top3.innerHTML = 'Расчёт: ...';
@@ -84,7 +77,6 @@
         const randomNums = Array.from({length: 3}, () => Math.floor(Math.random() * 37).toString().padStart(2, '0')).join(' ');
         top3.innerHTML = `Расчёт: ${randomNums}`;
       }, 200);
-
       try {
         const response = await fetch(WORKER_URL, {
           method: 'POST',
@@ -96,7 +88,9 @@
         const data = JSON.parse(text);
         clearInterval(interval);
         if (data.top && data.top.length > 0) {
-          top3.innerHTML = `Ответ: ${data.top.map(([n]) => n).join(' ')}`;
+          // Удаляем ведущий 0 в числах вроде '06' -> '6'
+          const formattedTop = data.top.map(([n]) => n.length === 2 && n.startsWith('0') ? n.slice(1) : n).join(' ');
+          top3.innerHTML = `Ответ: ${formattedTop}`;
         } else {
           top3.innerHTML = 'Нет данных для анализа';
         }
