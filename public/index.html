@@ -4,27 +4,55 @@
   <title>Рулетка Стол</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
-    body { background: #000; color: #FFF; font-family: Arial; text-align: center; padding: 10px; }
-    .table { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; max-width: 300px; margin: 20px auto; }
-    .cell { background: #333; border: 1px solid #666; padding: 10px; cursor: pointer; border-radius: 5px; }
-    .cell:hover { background: #FFA500; }
-    .zero { background: #00FF00; grid-column: 1 / -1; } /* 0 занимает всю строку */
-    .history { margin: 20px; font-size: 12px; overflow: auto; max-height: 100px; }
-    .top3 { margin: 20px; font-size: 16px; background: #222; padding: 10px; border-radius: 5px; }
-    button { background: #FFA500; color: #000; border: none; padding: 10px 20px; margin: 5px; border-radius: 5px; cursor: pointer; }
+    body { 
+      background: #17212B; color: #FFF; font-family: Arial, sans-serif; text-align: center; padding: 10px; 
+      margin: 0; height: 100vh; overflow-y: auto;
+    }
+    h1 { font-size: 24px; margin: 10px 0; }
+    p { font-size: 14px; margin: 10px 0; }
+    .table { 
+      display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; max-width: 300px; margin: 20px auto; 
+      padding: 10px; background: #000; border-radius: 10px;
+    }
+    .cell { 
+      background: #333; border: 1px solid #666; padding: 15px; cursor: pointer; border-radius: 5px; 
+      font-size: 18px; font-weight: bold; user-select: none; transition: background 0.2s;
+    }
+    .cell:hover { background: #FFA500 !important; color: #000; }
+    .red { background: #FF0000; color: #FFF; }
+    .black { background: #000000; color: #FFF; }
+    .green { background: #00FF00; color: #000; grid-column: 1 / -1; padding: 20px; font-size: 24px; margin: 5px 0; }
+    .history { 
+      margin: 20px; font-size: 12px; overflow: auto; max-height: 80px; background: #222; padding: 10px; 
+      border-radius: 5px; text-align: left;
+    }
+    .top3 { 
+      margin: 20px; font-size: 16px; background: #222; padding: 15px; border-radius: 5px; min-height: 50px;
+    }
+    .analyze-input { 
+      margin: 10px; padding: 10px; border: 1px solid #666; border-radius: 5px; background: #333; 
+      color: #FFF; width: 150px; font-size: 16px;
+    }
+    button { 
+      background: #FFA500; color: #000; border: none; padding: 12px 24px; margin: 5px; 
+      border-radius: 5px; cursor: pointer; font-weight: bold; transition: background 0.2s;
+    }
     button:hover { background: #FF8C00; }
   </style>
 </head>
 <body>
-  <h1>🎰 Стол Рулетки</h1>
-  <p>Кликни число — добавь в историю (обновит базу бота)</p>
+  <h1>🎰 Стол Рулетки (Американская)</h1>
+  <p>Кликни число на столе — добавь в историю (обновит базу бота)</p>
   <div class="table" id="table"></div>
+  <div style="margin: 20px;">
+    <input type="number" id="analyzeInput" class="analyze-input" placeholder="Число для анализа (0-36 или 00)" min="0" max="36">
+    <button onclick="analyze()">Анализировать</button>
+  </div>
   <div class="history">
     Последние 10: <span id="histList"></span>
   </div>
-  <div class="top3" id="top3">Топ-3 после последнего: ...</div>
-  <button onclick="analyze()">Анализ</button>
-  <button onclick="clearHistory()">Очистить</button>
+  <div class="top3" id="top3">Топ-3: ...</div>
+  <button onclick="clearHistory()">Очистить историю</button>
 
   <script>
     const WebApp = Telegram.WebApp;
@@ -34,19 +62,60 @@
     let history = [];
     const WORKER_URL = 'https://analiz-bot.zaugoldima.workers.dev';  // Твой Worker URL
 
-    // Стандартный стол рулетки (3 ряда, 0 сверху)
-    const numbers = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
+    // Американская рулетка: порядок как на скрине (6 рядов по 3, цвета red/black, 0/00 снизу зелёные)
+    const numbers = [
+      // Ряд 1: 1r 2b 3r
+      {num: 1, color: 'red'}, {num: 2, color: 'black'}, {num: 3, color: 'red'},
+      // Ряд 2: 4b 5r 6b
+      {num: 4, color: 'black'}, {num: 5, color: 'red'}, {num: 6, color: 'black'},
+      // Ряд 3: 7r 8b 9r
+      {num: 7, color: 'red'}, {num: 8, color: 'black'}, {num: 9, color: 'red'},
+      // Ряд 4: 10b 11b 12r
+      {num: 10, color: 'black'}, {num: 11, color: 'black'}, {num: 12, color: 'red'},
+      // Ряд 5: 13b 14r 15b
+      {num: 13, color: 'black'}, {num: 14, color: 'red'}, {num: 15, color: 'black'},
+      // Ряд 6: 16r 17b 18r
+      {num: 16, color: 'red'}, {num: 17, color: 'black'}, {num: 18, color: 'red'},
+      // Ряд 7: 19r 20b 21r
+      {num: 19, color: 'red'}, {num: 20, color: 'black'}, {num: 21, color: 'red'},
+      // Ряд 8: 22b 23r 24b
+      {num: 22, color: 'black'}, {num: 23, color: 'red'}, {num: 24, color: 'black'},
+      // Ряд 9: 25r 26b 27r
+      {num: 25, color: 'red'}, {num: 26, color: 'black'}, {num: 27, color: 'red'},
+      // Ряд 10: 28b 29r 30b
+      {num: 28, color: 'black'}, {num: 29, color: 'red'}, {num: 30, color: 'black'},
+      // Ряд 11: 31b 32r 33b
+      {num: 31, color: 'black'}, {num: 32, color: 'red'}, {num: 33, color: 'black'},
+      // Ряд 12: 34r 35b 36r
+      {num: 34, color: 'red'}, {num: 35, color: 'black'}, {num: 36, color: 'red'}
+    ];
+    // Добавляем 0 и 00 снизу (grid-column full)
+    const zeroCell = {num: 0, color: 'green'};
+    const doubleZeroCell = {num: 00, color: 'green'};
+
     const table = document.getElementById('table');
-    numbers.forEach(num => {
+
+    // Строим сетку: 1-36 в 3-колоночном grid (12 рядов? Wait, 36/3=12, но скрин 6? Ошибка — стандартно 12 рядов по 3? Нет, рулетка — 3 длинных колонки, но в grid repeat(3,1fr) с 36 элементами = 12 рядов. Чтобы как скрин (горизонтальные ряды), оставляем.
+    numbers.forEach(item => {
       const cell = document.createElement('div');
-      cell.className = num === 0 ? 'cell zero' : 'cell';
-      cell.textContent = num;
-      cell.onclick = () => addNumber(num);
+      cell.className = `cell ${item.color}`;
+      cell.textContent = item.num;
+      cell.onclick = () => addNumber(item.num);
+      table.appendChild(cell);
+    });
+    // 0 и 00 снизу
+    [zeroCell, doubleZeroCell].forEach(item => {
+      const cell = document.createElement('div');
+      cell.className = `cell ${item.color} green`;  // green class для ширины
+      cell.textContent = item.num;
+      cell.onclick = () => addNumber(item.num);
       table.appendChild(cell);
     });
 
     function addNumber(num) {
-      const normalized = num === 0 ? '00' : num.toString().padStart(2, '0');
+      let normalized;
+      if (num === 0 || num === 00) normalized = '00';
+      else normalized = num.toString().padStart(2, '0');
       history.push(normalized);
       updateHistory();
       // Синхронизируем с ботом (Worker)
@@ -56,7 +125,7 @@
         body: JSON.stringify({ action: 'add_number', number: normalized })
       }).then(r => r.json()).then(data => {
         if (data.success) WebApp.showAlert(`Добавлено: ${num} (база обновлена)`);
-      });
+      }).catch(e => WebApp.showAlert('Ошибка добавления'));
     }
 
     function updateHistory() {
@@ -64,17 +133,36 @@
     }
 
     async function analyze() {
+      const input = document.getElementById('analyzeInput');
+      let x = input.value.trim();
+      let action = 'get_top_after_last';
+      let bodyData = {};
+
+      if (x) {
+        if (x === '0' || x === '00') x = '00';
+        else if (/^\d{1,2}$/.test(x) && 1 <= +x && +x <= 36) x = x.padStart(2, '0');
+        else {
+          WebApp.showAlert('Введи валидное число: 0-36 или 00');
+          return;
+        }
+        action = 'get_top_after';
+        bodyData = { number: x };
+      }
+
       const response = await fetch(WORKER_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'get_top_after_last' })
+        body: JSON.stringify({ action, ...bodyData })
       });
       const data = await response.json();
-      if (data.top) {
-        document.getElementById('top3').innerHTML = `Топ-3 после последнего: ${data.top.map(([n, c]) => `${n} (${c})`).join(', ')} (всего: ${data.total})`;
+      if (data.top && data.top.length > 0) {
+        const topText = data.top.map(([n, c]) => `${n} (${c})`).join(', ');
+        document.getElementById('top3').innerHTML = `Топ-3 после ${x || 'последнего'}: ${topText} (всего: ${data.total})`;
       } else {
-        document.getElementById('top3').textContent = 'Нет истории для анализа.';
+        document.getElementById('top3').textContent = 'Нет истории для анализа (нужно 2+ числа).';
       }
+      // Очищаем поле после анализа
+      input.value = '';
     }
 
     async function clearHistory() {
@@ -85,6 +173,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'clear_history' })
       });
+      document.getElementById('top3').textContent = 'История очищена.';
       WebApp.showAlert('История очищена!');
     }
 
@@ -92,7 +181,7 @@
     fetch(WORKER_URL, { method: 'GET' }).then(r => r.json()).then(data => {
       history = data.history || [];
       updateHistory();
-    });
+    }).catch(e => console.log('Ошибка загрузки истории:', e));
   </script>
 </body>
 </html>
