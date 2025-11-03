@@ -79,7 +79,7 @@
       const cell = document.createElement('div');
       cell.className = `cell ${item.color}`;
       cell.textContent = item.num;
-      cell.onclick = () => addNumber(item.num);
+      cell.onclick = () => analyzeNumber(item.num);  // Изменено на анализ, без добавления
       table.appendChild(cell);
     });
 
@@ -90,47 +90,46 @@
       const cell = document.createElement('div');
       cell.className = `cell ${item.color}`;
       cell.textContent = item.num === 0 ? '0' : '00';
-      cell.onclick = () => addNumber(item.num);
+      cell.onclick = () => analyzeNumber(item.num);  // Изменено на анализ
       greenContainer.appendChild(cell);
     });
     table.appendChild(greenContainer);
 
-    function addNumber(num) {
-      let normalized;
-      if (num === 0 || num === '00') normalized = '00';
-      else normalized = num.toString().padStart(2, '0');
-      history.push(normalized);
-      // Нет updateHistory() - блок удалён
-      fetch(WORKER_URL, {
+    async function analyzeNumber(num) {
+      let x;
+      if (num === 0 || num === '00') x = '00';
+      else x = num.toString().padStart(2, '0');
+
+      const response = await fetch(WORKER_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'add_number', number: normalized })
-      }).then(r => r.json()).then(data => {
-        if (data.success) WebApp.showAlert(`Добавлено: ${num === 0 ? '0' : num}`);
-      }).catch(e => WebApp.showAlert('Ошибка добавления: ' + e.message));
+        body: JSON.stringify({ action: 'get_top_after', number: x })
+      });
+      const data = await response.json();
+      if (data.top && data.top.length > 0) {
+        const topText = data.top.map(([n, c]) => `${n} (${c})`).join(', ');
+        document.getElementById('top3').innerHTML = `Наиболее вероятные числа: ${topText} (всего: ${data.total})`;
+      } else {
+        document.getElementById('top3').textContent = 'Нет данных для анализа';
+      }
     }
 
     async function analyze() {
       const input = document.getElementById('analyzeInput');
       let x = input.value.trim();
-      let action = 'get_top_after_last';
-      let bodyData = {};
+      if (!x) return WebApp.showAlert('Введи число');
 
-      if (x) {
-        if (x === '0' || x === '00') x = '00';
-        else if (/^\d{1,2}$/.test(x) && 1 <= +x && +x <= 36) x = x.padStart(2, '0');
-        else {
-          WebApp.showAlert('Введи 0-36 или 00');
-          return;
-        }
-        action = 'get_top_after';
-        bodyData = { number: x };
+      if (x === '0' || x === '00') x = '00';
+      else if (/^\d{1,2}$/.test(x) && 1 <= +x && +x <= 36) x = x.padStart(2, '0');
+      else {
+        WebApp.showAlert('Введи 0-36 или 00');
+        return;
       }
 
       const response = await fetch(WORKER_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, ...bodyData })
+        body: JSON.stringify({ action: 'get_top_after', number: x })
       });
       const data = await response.json();
       if (data.top && data.top.length > 0) {
