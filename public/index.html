@@ -19,7 +19,7 @@
     }
     .cell { 
       background: #333; border: none; padding: 0; cursor: pointer; border-radius: 50%; 
-      font-size: 12px; font-weight: 600; aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center; 
+      font-size: 14px; font-weight: 600; aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center; 
       transition: background 0.2s, transform 0.2s;
     }
     .cell:hover { background: #F59E0B !important; color: #000; transform: scale(1.05); }
@@ -27,22 +27,15 @@
     .black { background: #000000; color: #FFF; }
     .green { 
       background: #22C55E; color: #000; border-radius: 50px; aspect-ratio: 2/1; grid-column: span 1; 
-      font-size: 15px; margin: 12px auto 0; width: 75px; 
+      font-size: 18px; margin: 12px auto 0; width: 75px; 
     }
     .green-container { display: flex; justify-content: center; gap: 3px; grid-column: 1 / -1; }
-    button { 
-      background: #F59E0B; color: #000; border: none; padding: 9px 18px; 
-      border-radius: 24px; cursor: pointer; font-weight: 600; font-size: 18px; transition: background 0.2s;
-      margin: 12px auto; display: block;
-    }
-    button:hover { background: #D97706; }
   </style>
 </head>
 <body>
   <h1>🎰 Стол Рулетки</h1>
   <div class="top3" id="top3">Наиболее вероятные числа: ...</div>
   <div class="table" id="table"></div>
-  <button onclick="clearLast()">Очистить</button>
 
   <script>
     const WebApp = Telegram.WebApp;
@@ -122,21 +115,6 @@
         top3.innerHTML = 'Ошибка расчета';
         WebApp.showAlert('Ошибка: ' + e.message);
       }
-    }
-
-    async function clearLast() {
-      if (history.length === 0) {
-        WebApp.showAlert('База пуста!');
-        return;
-      }
-      history.pop();  // Удаляем последнее локально
-      await fetch(WORKER_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'remove_last' })  // Новый action в Worker
-      }).then(r => r.json()).then(data => {
-        if (data.success) WebApp.showAlert('Последнее число удалено!');
-      }).catch(e => WebApp.showAlert('Ошибка удаления: ' + e.message));
     }
 
     // Загрузка истории (для анализа, без отображения)
