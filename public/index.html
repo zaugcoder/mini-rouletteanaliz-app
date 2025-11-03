@@ -9,18 +9,10 @@
       margin: 0; height: 100vh; overflow-y: auto; font-weight: 500;
     }
     h1 { font-size: 24px; margin: 12px 0 6px; font-weight: 600; }
-    .input-container { 
-      display: flex; flex-direction: column; align-items: center; margin: 12px auto; max-width: 300px;
+    .top3 { 
+      margin: 12px auto; font-size: 20px; font-weight: bold; background: #1E293B; padding: 9px 15px; border-radius: 24px; 
+      max-width: 300px; text-align: center; min-height: 48px; color: #F59E0B;
     }
-    .analyze-input { 
-      margin: 0 0 12px; padding: 9px 15px; border: none; border-radius: 24px; background: #334155; 
-      color: #FFF; width: 240px; font-size: 18px; text-align: center;
-    }
-    button { 
-      background: #F59E0B; color: #000; border: none; padding: 9px 18px; 
-      border-radius: 24px; cursor: pointer; font-weight: 600; font-size: 18px; transition: background 0.2s;
-    }
-    button:hover { background: #D97706; }
     .table { 
       display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px; max-width: 270px; margin: 12px auto; 
       padding: 6px; background: transparent;
@@ -38,18 +30,16 @@
       font-size: 15px; margin: 12px auto 0; width: 75px; 
     }
     .green-container { display: flex; justify-content: center; gap: 3px; grid-column: 1 / -1; }
-    .top3 { 
-      margin: 12px auto; font-size: 20px; font-weight: bold; background: #1E293B; padding: 9px 15px; border-radius: 24px; 
-      max-width: 300px; text-align: center; min-height: 48px; color: #F59E0B;
+    button { 
+      background: #F59E0B; color: #000; border: none; padding: 9px 18px; 
+      border-radius: 24px; cursor: pointer; font-weight: 600; font-size: 18px; transition: background 0.2s;
+      margin: 12px auto; display: block;
     }
+    button:hover { background: #D97706; }
   </style>
 </head>
 <body>
   <h1>🎰 Стол Рулетки</h1>
-  <div class="input-container">
-    <input type="number" id="analyzeInput" class="analyze-input" placeholder="Число для анализа (0-36/00)" min="0" max="36">
-    <button onclick="analyze()">Анализировать</button>
-  </div>
   <div class="top3" id="top3">Наиболее вероятные числа: ...</div>
   <div class="table" id="table"></div>
   <button onclick="clearLast()">Очистить</button>
@@ -73,13 +63,14 @@
     ];
 
     const table = document.getElementById('table');
+    const top3 = document.getElementById('top3');
 
     // Строим 1-36 в 6 колонках (6 рядов)
     numbers.forEach(item => {
       const cell = document.createElement('div');
       cell.className = `cell ${item.color}`;
       cell.textContent = item.num;
-      cell.onclick = () => analyzeNumber(item.num);  // Изменено на анализ, без добавления
+      cell.onclick = () => analyzeNumber(item.num);
       table.appendChild(cell);
     });
 
@@ -90,7 +81,7 @@
       const cell = document.createElement('div');
       cell.className = `cell ${item.color}`;
       cell.textContent = item.num === 0 ? '0' : '00';
-      cell.onclick = () => analyzeNumber(item.num);  // Изменено на анализ
+      cell.onclick = () => analyzeNumber(item.num);
       greenContainer.appendChild(cell);
     });
     table.appendChild(greenContainer);
@@ -100,45 +91,30 @@
       if (num === 0 || num === '00') x = '00';
       else x = num.toString().padStart(2, '0');
 
-      const response = await fetch(WORKER_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'get_top_after', number: x })
-      });
-      const data = await response.json();
-      if (data.top && data.top.length > 0) {
-        const topText = data.top.map(([n, c]) => `${n} (${c})`).join(', ');
-        document.getElementById('top3').innerHTML = `Наиболее вероятные числа: ${topText} (всего: ${data.total})`;
-      } else {
-        document.getElementById('top3').textContent = 'Нет данных для анализа';
-      }
-    }
+      top3.innerHTML = 'Расчет: ...';  // Начало анимации
 
-    async function analyze() {
-      const input = document.getElementById('analyzeInput');
-      let x = input.value.trim();
-      if (!x) return WebApp.showAlert('Введи число');
+      // Анимация: Меняем числа рандомно
+      const interval = setInterval(() => {
+        const randomNums = Array.from({length: 3}, () => Math.floor(Math.random() * 37).toString().padStart(2, '0')).join(' ');
+        top3.innerHTML = `Расчет: ${randomNums}`;
+      }, 200);  // Меняем каждые 200мс
 
-      if (x === '0' || x === '00') x = '00';
-      else if (/^\d{1,2}$/.test(x) && 1 <= +x && +x <= 36) x = x.padStart(2, '0');
-      else {
-        WebApp.showAlert('Введи 0-36 или 00');
-        return;
-      }
-
-      const response = await fetch(WORKER_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'get_top_after', number: x })
-      });
-      const data = await response.json();
-      if (data.top && data.top.length > 0) {
-        const topText = data.top.map(([n, c]) => `${n} (${c})`).join(', ');
-        document.getElementById('top3').innerHTML = `Наиболее вероятные числа: ${topText} (всего: ${data.total})`;
-      } else {
-        document.getElementById('top3').textContent = 'Нет данных для анализа';
-      }
-      input.value = '';
+      // Через 1 сек - реальный анализ
+      setTimeout(async () => {
+        clearInterval(interval);
+        const response = await fetch(WORKER_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'get_top_after', number: x })
+        });
+        const data = await response.json();
+        if (data.top && data.top.length > 0) {
+          const topText = data.top.map(([n]) => n).join(' ');  // Только числа
+          top3.innerHTML = `Ответ: ${topText}`;
+        } else {
+          top3.innerHTML = 'Нет данных для анализа';
+        }
+      }, 1000);
     }
 
     async function clearLast() {
