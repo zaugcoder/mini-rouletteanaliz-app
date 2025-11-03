@@ -39,8 +39,8 @@
     }
     .green-container { display: flex; justify-content: center; gap: 3px; grid-column: 1 / -1; }
     .top3 { 
-      margin: 12px auto; font-size: 18px; background: #1E293B; padding: 9px 15px; border-radius: 24px; 
-      max-width: 300px; text-align: center; min-height: 48px;
+      margin: 12px auto; font-size: 20px; font-weight: bold; background: #1E293B; padding: 9px 15px; border-radius: 24px; 
+      max-width: 300px; text-align: center; min-height: 48px; color: #F59E0B;
     }
   </style>
 </head>
@@ -50,9 +50,9 @@
     <input type="number" id="analyzeInput" class="analyze-input" placeholder="Число для анализа (0-36/00)" min="0" max="36">
     <button onclick="analyze()">Анализировать</button>
   </div>
-  <div class="top3" id="top3">Топ-3: ...</div>
+  <div class="top3" id="top3">Наиболее вероятные числа: ...</div>
   <div class="table" id="table"></div>
-  <button onclick="clearHistory()" style="margin: 12px auto; display: block;">Очистить</button>
+  <button onclick="clearLast()">Очистить</button>
 
   <script>
     const WebApp = Telegram.WebApp;
@@ -135,22 +135,26 @@
       const data = await response.json();
       if (data.top && data.top.length > 0) {
         const topText = data.top.map(([n, c]) => `${n} (${c})`).join(', ');
-        document.getElementById('top3').innerHTML = `Топ-3 после ${x || 'последнего'}: ${topText} (всего: ${data.total})`;
+        document.getElementById('top3').innerHTML = `Наиболее вероятные числа: ${topText} (всего: ${data.total})`;
       } else {
         document.getElementById('top3').textContent = 'Нет данных для анализа';
       }
       input.value = '';
     }
 
-    async function clearHistory() {
-      history = [];
+    async function clearLast() {
+      if (history.length === 0) {
+        WebApp.showAlert('База пуста!');
+        return;
+      }
+      history.pop();  // Удаляем последнее локально
       await fetch(WORKER_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'clear_history' })
-      });
-      document.getElementById('top3').textContent = 'Топ-3: ...';
-      WebApp.showAlert('Очищено!');
+        body: JSON.stringify({ action: 'remove_last' })  // Новый action в Worker
+      }).then(r => r.json()).then(data => {
+        if (data.success) WebApp.showAlert('Последнее число удалено!');
+      }).catch(e => WebApp.showAlert('Ошибка удаления: ' + e.message));
     }
 
     // Загрузка истории (для анализа, без отображения)
