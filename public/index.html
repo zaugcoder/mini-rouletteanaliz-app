@@ -1,247 +1,97 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Рулетка Анализатор</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Рулетка Стол</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: linear-gradient(135deg, #1a1a2e, #16213e);
-      color: #fff;
-      min-height: 100vh;
-      padding: 20px;
-    }
-    .container {
-      max-width: 400px;
-      margin: 0 auto;
-      text-align: center;
-    }
-    h1 { font-size: 24px; margin-bottom: 10px; }
-    p { margin: 10px 0; font-size: 16px; }
-    input {
-      padding: 12px;
-      width: 120px;
-      text-align: center;
-      font-size: 18px;
-      border: 2px solid #444;
-      border-radius: 8px;
-      background: #222;
-      color: #fff;
-      margin: 10px 0;
-    }
-    button {
-      padding: 12px 20px;
-      font-size: 16px;
-      background: #00bfff;
-      color: white;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      margin-left: 8px;
-    }
-    button:disabled { background: #555; cursor: not-allowed; }
-    .result {
-      margin-top: 20px;
-      padding: 15px;
-      background: rgba(255,255,255,0.1);
-      border-radius: 10px;
-      min-height: 60px;
-      font-size: 16px;
-    }
-    .error {
-      color: #ff6b6b;
-      font-weight: bold;
-      margin: 10px 0;
-      display: none;
-    }
-    .loader {
-      display: inline-block;
-      width: 20px;
-      height: 20px;
-      border: 3px solid #444;
-      border-top: 3px solid #00bfff;
-      border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin-left: 10px;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    body { background: linear-gradient(to bottom, #0F172A, #1E293B); color: #FFF; font-family: system-ui; text-align: center; padding: 10px 0; margin: 0; height: 100vh; overflow-y: auto; }
+    h1 { font-size: 28px; margin: 12px 0 6px; }
+    .top3 { margin: 12px auto; font-size: 28px; font-weight: bold; background: #1E293B; padding: 12px 18px; border-radius: 28px; max-width: 350px; min-height: 56px; color: #F59E0B; }
+    .table { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; max-width: 300px; margin: 12px auto; padding: 6px; }
+    .cell { background: #333; border: none; padding: 0; cursor: pointer; border-radius: 50%; font-size: 14px; font-weight: 600; aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+    .cell:hover { background: #F59E0B !important; color: #000; transform: scale(1.05); }
+    .red { background: #EF4444; color: #FFF; }
+    .black { background: #000; color: #FFF; }
+    .green { background: #22C55E; color: #000; border-radius: 50px; aspect-ratio: 2/1; font-size: 18px; width: 90px; }
+    .green-container { display: flex; justify-content: center; gap: 4px; grid-column: 1 / -1; }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Рулетка Анализатор</h1>
-    <p id="status">Загрузка...</p>
-    <div id="main" style="display:none;">
-      <p>Чисел в базе: <strong id="count">0</strong></p>
-      <input type="text" id="numberInput" placeholder="0-36" maxlength="2" />
-      <button id="analyzeBtn">Анализ</button>
-      <div class="result" id="result"></div>
-    </div>
-    <div class="error" id="error"></div>
-  </div>
-
+  <h1>Стол Рулетки</h1>
+  <div class="top3" id="top3">Загрузка...</div>
+  <div class="table" id="table"></div>
   <script>
-    // === КОНФИГУРАЦИЯ ===
-    const WORKER_URL = 'https://analiz-bot.zaugoldima.workers.dev'; // ТВОЙ WORKER
-    const PROXY_URL = 'https://api.allorigins.win/raw?url=';
+    const WebApp = Telegram.WebApp;
+    WebApp.ready();
+    WebApp.expand();
+    const WORKER_URL = 'https://analiz-bot.zaugoldima.workers.dev';
+    const chatId = WebApp.initDataUnsafe?.user?.id;
 
-    // === УТИЛИТЫ ===
-    const $ = (id) => document.getElementById(id);
-    const log = console.log;
-
-    function proxyFetch(url, options = {}) {
-      const encoded = encodeURIComponent(url);
-      const proxy = PROXY_URL + encoded;
-      const opts = {
-        method: options.method || 'GET',
-        headers: { 'Content-Type': 'application/json', ...options.headers },
-        body: options.body || null
-      };
-      return fetch(proxy, opts)
-        .then(r => {
-          if (!r.ok) throw new Error(`HTTP ${r.status}`);
-          return r.json();
-        })
-        .catch(err => {
-          showError('Нет связи с сервером. Попробуй позже.');
-          log('Proxy error:', err);
-          throw err;
-        });
-    }
-
-    function showError(msg) {
-      const el = $('error');
-      el.textContent = msg;
-      el.style.display = 'block';
-      setTimeout(() => el.style.display = 'none', 5000);
-    }
-
-    function showLoader(show) {
-      const btn = $('analyzeBtn');
-      if (show) {
-        btn.innerHTML = 'Анализ <div class="loader"></div>';
-        btn.disabled = true;
-      } else {
-        btn.innerHTML = 'Анализ';
-        btn.disabled = false;
-      }
-    }
-
-    // === ОСНОВНОЙ КОД ===
-    let userChatId = null;
-    let history = [];
-
-    async function checkSubscription() {
+    async function checkSub() {
+      if (!chatId) { WebApp.showAlert('Ошибка ID'); WebApp.close(); return false; }
       try {
-        const url = `${WORKER_URL}?query=check-sub&chat_id=${userChatId}`;
-        const data = await proxyFetch(url);
-        return data.ok;
-      } catch {
-        return false;
-      }
+        const res = await fetch(`${WORKER_URL}?query=check-sub&chat_id=${chatId}`);
+        const data = await res.json();
+        if (!data.ok) { WebApp.showAlert('Подписка истекла\nКупи у @DimasZau'); WebApp.close(); return false; }
+        return true;
+      } catch { WebApp.showAlert('Нет связи'); WebApp.close(); return false; }
     }
 
-    async function loadHistory() {
-      try {
-        const data = await proxyFetch(WORKER_URL);
-        return data.history || [];
-      } catch {
-        return [];
-      }
-    }
+    window.addEventListener('load', async () => {
+      if (!await checkSub()) return;
+      document.getElementById('top3').innerHTML = 'Готово';
+      loadTable();
+    });
 
-    async function getTopAfter(num) {
-      try {
-        const res = await proxyFetch(WORKER_URL, {
-          method: 'POST',
-          body: JSON.stringify({ action: 'get_top_after', number: num })
-        });
-        return res.top || [];
-      } catch {
-        return [];
-      }
-    }
+    function loadTable() {
+      const numbers = [
+        {num:1,color:'red'},{num:2,color:'black'},{num:3,color:'red'},{num:4,color:'black'},{num:5,color:'red'},{num:6,color:'black'},
+        {num:7,color:'red'},{num:8,color:'black'},{num:9,color:'red'},{num:10,color:'black'},{num:11,color:'black'},{num:12,color:'red'},
+        {num:13,color:'black'},{num:14,color:'red'},{num:15,color:'black'},{num:16,color:'red'},{num:17,color:'black'},{num:18,color:'red'},
+        {num:19,color:'red'},{num:20,color:'black'},{num:21,color:'red'},{num:22,color:'black'},{num:23,color:'red'},{num:24,color:'black'},
+        {num:25,color:'red'},{num:26,color:'black'},{num:27,color:'red'},{num:28,color:'black'},{num:29,color:'black'},{num:30,color:'red'},
+        {num:31,color:'black'},{num:32,color:'red'},{num:33,color:'black'},{num:34,color:'red'},{num:35,color:'black'},{num:36,color:'red'}
+      ];
+      const table = document.getElementById('table');
+      const top3 = document.getElementById('top3');
 
-    async function init() {
-      // Telegram WebApp
-      if (window.Telegram?.WebApp) {
-        Telegram.WebApp.ready();
-        const user = Telegram.WebApp.initDataUnsafe?.user;
-        if (!user?.id) {
-          showError('Не удалось получить ID. Перезапусти.');
-          return;
-        }
-        userChatId = user.id;
-      } else {
-        // Для теста в браузере
-        userChatId = 123456789;
-      }
-
-      // Проверка подписки
-      $('status').textContent = 'Проверка подписки...';
-      const hasSub = await checkSubscription();
-      if (!hasSub) {
-        document.body.innerHTML = `
-          <div style="text-align:center; padding:40px; font-family:sans-serif;">
-            <h3>Подписка истекла</h3>
-            <p>Купи доступ у @DimasZau</p>
-            <button onclick="Telegram.WebApp.close()" style="padding:12px 24px; background:#00bfff; color:white; border:none; border-radius:8px; margin-top:20px;">
-              Закрыть
-            </button>
-          </div>
-        `;
-        return;
-      }
-
-      // Загрузка истории
-      $('status').textContent = 'Загрузка базы...';
-      history = await loadHistory();
-      $('count').textContent = history.length;
-      $('status').style.display = 'none';
-      $('main').style.display = 'block';
-
-      // События
-      $('analyzeBtn').onclick = analyze;
-      $('numberInput').addEventListener('keypress', e => {
-        if (e.key === 'Enter') analyze();
+      numbers.forEach(item => {
+        const cell = document.createElement('div');
+        cell.className = `cell ${item.color}`;
+        cell.textContent = item.num;
+        cell.onclick = () => analyze(item.num);
+        table.appendChild(cell);
       });
-    }
 
-    async function analyze() {
-      const input = $('numberInput');
-      const val = input.value.trim();
-      const result = $('result');
+      const green = document.createElement('div');
+      green.className = 'green-container';
+      [{num:0,color:'green'},{num:'00',color:'green'}].forEach(item => {
+        const cell = document.createElement('div');
+        cell.className = `cell ${item.color}`;
+        cell.textContent = item.num === 0 ? '0' : '00';
+        cell.onclick = () => analyze(item.num);
+        green.appendChild(cell);
+      });
+      table.appendChild(green);
 
-      if (!/^(0|00|[1-9]|1[0-9]|2[0-9]|3[0-6])$/.test(val)) {
-        result.innerHTML = '<p style="color:#ff6b6b;">Неверное число!</p>';
-        return;
-      }
-
-      const x = val === '0' ? '00' : val.padStart(2, '0');
-      result.innerHTML = '';
-      showLoader(true);
-
-      try {
-        const top = await getTopAfter(x);
-        showLoader(false);
-
-        if (!top.length || top[0][0] === '-') {
-          result.innerHTML = `<p>После <strong>${x}</strong> — нет данных</p>`;
-        } else {
-          const list = top.map(([n, c]) => `→ <strong>${n}</strong> (${c} раз)`).join('<br>');
-          result.innerHTML = `<p>Топ-3 после <strong>${x}</strong>:<br>${list}</p>`;
-        }
-      } catch {
-        showLoader(false);
-        result.innerHTML = '<p style="color:#ff6b6b;">Ошибка связи.</p>';
+      async function analyze(num) {
+        let x = (num === 0 || num === '00') ? '00' : num.toString().padStart(2, '0');
+        top3.innerHTML = 'Расчёт: ...';
+        const int = setInterval(() => {
+          top3.innerHTML = `Расчёт: ${Array.from({length:3},()=>Math.floor(Math.random()*37).toString().padStart(2,'0')).join(' ')}`;
+        }, 50);
+        setTimeout(async () => {
+          try {
+            const res = await fetch(WORKER_URL, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({action:'get_top_after',number:x}) });
+            const data = await res.json();
+            clearInterval(int);
+            top3.innerHTML = data.top?.length ? `Ответ: ${data.top.map(([n])=>n.startsWith('0')?n.slice(1):n).join(' ')}` : 'Нет данных';
+          } catch { clearInterval(int); top3.innerHTML = 'Ошибка'; }
+        }, 1000);
       }
     }
-
-    // === ЗАПУСК ===
-    window.addEventListener('load', init);
   </script>
 </body>
 </html>
