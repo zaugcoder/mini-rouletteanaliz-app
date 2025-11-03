@@ -86,14 +86,16 @@
         const text = await response.text();
         if (!response.ok) throw new Error(`Сеть: ${response.status} — ${text}`);
         const data = JSON.parse(text);
-        clearInterval(interval);
-        if (data.top && data.top.length > 0) {
-          // Удаляем ведущий 0 в числах вроде '06' -> '6'
-          const formattedTop = data.top.map(([n]) => n.length === 2 && n.startsWith('0') ? n.slice(1) : n).join(' ');
-          top3.innerHTML = `Ответ: ${formattedTop}`;
-        } else {
-          top3.innerHTML = 'Нет данных для анализа';
-        }
+        // Увеличили время расчёта до 1.5 секунд (1500 мс)
+        setTimeout(() => {
+          clearInterval(interval);
+          if (data.top && data.top.length > 0) {
+            const formattedTop = data.top.map(([n]) => n.length === 2 && n.startsWith('0') ? n.slice(1) : n).join(' ');
+            top3.innerHTML = `Ответ: ${formattedTop}`;
+          } else {
+            top3.innerHTML = 'Нет данных для анализа';
+          }
+        }, 1500);
       } catch (e) {
         clearInterval(interval);
         top3.innerHTML = 'Ошибка расчёта';
