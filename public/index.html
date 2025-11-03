@@ -71,36 +71,42 @@
     });
     table.appendChild(greenContainer);
     async function analyzeNumber(num) {
-      let x = (num === 0 || num === '00') ? '00' : num.toString().padStart(2, '0');
-      top3.innerHTML = 'Расчёт: ...';
-      const interval = setInterval(() => {
-        const randomNums = Array.from({length: 3}, () => Math.floor(Math.random() * 37).toString().padStart(2, '0')).join(' ');
-        top3.innerHTML = `Расчёт: ${randomNums}`;
-      }, 50);
-      try {
-        const response = await fetch(WORKER_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'get_top_after', number: x })
-        });
-        const text = await response.text();
-        if (!response.ok) throw new Error(`Сеть: ${response.status} — ${text}`);
-        const data = JSON.parse(text);
-        clearInterval(interval);
-        setTimeout(() => {
-          if (data.top && data.top.length > 0) {
-            const formattedTop = data.top.map(([n]) => n.length === 2 && n.startsWith('0') ? n.slice(1) : n).join(' ');
-            top3.innerHTML = `Ответ: ${formattedTop}`;
-          } else {
-            top3.innerHTML = 'Нет данных для анализа';
-          }
-        }, 1000); // 1 секунда задержки
-      } catch (e) {
-        clearInterval(interval);
-        top3.innerHTML = 'Ошибка расчёта';
-        WebApp.showAlert(`Ошибка: ${e.message}`);
+  let x = (num === 0 || num === '00') ? '00' : num.toString().padStart(2, '0');
+  top3.innerHTML = 'Расчёт: ...';
+
+  // Запускаем быструю анимацию (обновление каждые 50 мс)
+  const interval = setInterval(() => {
+    const randomNums = Array.from({length: 3}, () => Math.floor(Math.random() * 37).toString().padStart(2, '0')).join(' ');
+    top3.innerHTML = `Расчёт: ${randomNums}`;
+  }, 50); // Очень быстро — 20 раз в секунду
+
+  try {
+    const response = await fetch(WORKER_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'get_top_after', number: x })
+    });
+    const text = await response.text();
+    if (!response.ok) throw new Error(`Сеть: ${response.status} — ${text}`);
+    const data = JSON.parse(text);
+
+    // Ждём ровно 1 секунду, потом показываем результат
+    setTimeout(() => {
+      clearInterval(interval);
+      if (data.top && data.top.length > 0) {
+        const formattedTop = data.top.map(([n]) => n.length === 2 && n.startsWith('0') ? n.slice(1) : n).join(' ');
+        top3.innerHTML = `Ответ: ${formattedTop}`;
+      } else {
+        top3.innerHTML = 'Нет данных для анализа';
       }
-    }
+    }, 1000); // 1 секунда анимации
+
+  } catch (e) {
+    clearInterval(interval);
+    top3.innerHTML = 'Ошибка расчёта';
+    WebApp.showAlert(`Ошибка: ${e.message}`);
+  }
+}
   </script>
 </body>
 </html>
