@@ -99,22 +99,29 @@
         top3.innerHTML = `Расчет: ${randomNums}`;
       }, 200);  // Меняем каждые 200мс
 
-      // Через 1 сек - реальный анализ
-      setTimeout(async () => {
+      try {
+        // Через 1 сек - реальный анализ
+        setTimeout(async () => {
+          clearInterval(interval);
+          const response = await fetch(WORKER_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'get_top_after', number: x })
+          });
+          if (!response.ok) throw new Error('Ошибка сети: ' + response.status);
+          const data = await response.json();
+          if (data.top && data.top.length > 0) {
+            const topText = data.top.map(([n]) => n).join(' ');
+            top3.innerHTML = `Ответ: ${topText}`;
+          } else {
+            top3.innerHTML = 'Нет данных для анализа';
+          }
+        }, 1000);
+      } catch (e) {
         clearInterval(interval);
-        const response = await fetch(WORKER_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'get_top_after', number: x })
-        });
-        const data = await response.json();
-        if (data.top && data.top.length > 0) {
-          const topText = data.top.map(([n]) => n).join(' ');  // Только числа
-          top3.innerHTML = `Ответ: ${topText}`;
-        } else {
-          top3.innerHTML = 'Нет данных для анализа';
-        }
-      }, 1000);
+        top3.innerHTML = 'Ошибка расчета';
+        WebApp.showAlert('Ошибка: ' + e.message);
+      }
     }
 
     async function clearLast() {
