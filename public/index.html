@@ -3,24 +3,40 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Рулетка</title>
+  <title>Рулетка Стол</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
-    body { background: linear-gradient(to bottom, #0F172A, #1E293B); color: #FFF; font-family: system-ui; text-align: center; margin: 0; height: 100vh; overflow-y: auto; }
-    h1 { font-size: 28px; margin: 12px; }
-    .top3 { font-size: 28px; font-weight: bold; background: #1E293B; padding: 12px; border-radius: 28px; max-width: 350px; margin: 12px auto; color: #F59E0B; }
-    .table { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; max-width: 300px; margin: auto; }
-    .cell { background: #333; border-radius: 50%; font-size: 14px; aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; }
+    body { 
+      background: linear-gradient(to bottom, #0F172A, #1E293B); color: #FFF; font-family: system-ui, -apple-system, sans-serif; text-align: center; padding: 10px 0; 
+      margin: 0; height: 100vh; overflow-y: auto; font-weight: 500;
+    }
+    h1 { font-size: 28px; margin: 12px 0 6px; font-weight: 600; }
+    .top3 { 
+      margin: 12px auto; font-size: 28px; font-weight: bold; background: #1E293B; padding: 12px 18px; border-radius: 28px; 
+      max-width: 350px; text-align: center; min-height: 56px; color: #F59E0B;
+    }
+    .table { 
+      display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; max-width: 300px; margin: 12px auto; 
+      padding: 6px; background: transparent;
+    }
+    .cell { 
+      background: #333; border: none; padding: 0; cursor: pointer; border-radius: 50%; 
+      font-size: 14px; font-weight: 600; aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center; 
+      transition: background 0.2s, transform 0.2s;
+    }
     .cell:hover { background: #F59E0B !important; color: #000; transform: scale(1.05); }
     .red { background: #EF4444; color: #FFF; }
-    .black { background: #000; color: #FFF; }
-    .green { background: #22C55E; color: #000; border-radius: 50px; aspect-ratio: 2/1; font-size: 18px; width: 90px; }
+    .black { background: #000000; color: #FFF; }
+    .green { 
+      background: #22C55E; color: #000; border-radius: 50px; aspect-ratio: 2/1; grid-column: span 1; 
+      font-size: 18px; margin: 12px auto 0; width: 90px; 
+    }
     .green-container { display: flex; justify-content: center; gap: 4px; grid-column: 1 / -1; }
   </style>
 </head>
 <body>
-  <h1>🎰 Рулетка</h1>
-  <div class="top3" id="top3">Расчет...</div>
+  <h1>🎰 Стол Рулетки</h1>
+  <div class="top3" id="top3">Введите значение</div>
   <div class="table" id="table"></div>
 
   <script>
@@ -28,7 +44,7 @@
     WebApp.ready();
     WebApp.expand();
 
-    const WORKER_URL = 'https://analiz-bot.zaugoldima.workers.dev';
+    const WORKER_URL = 'https://analiz-bot.zaugoldima.workers.dev';  // Твой Worker URL
 
     const numbers = [
       {num: 1, color: 'red'}, {num: 2, color: 'black'}, {num: 3, color: 'red'}, {num: 4, color: 'black'}, {num: 5, color: 'red'}, {num: 6, color: 'black'},
@@ -63,10 +79,10 @@
 
     async function analyzeNumber(num) {
       let x = (num === 0 || num === '00') ? '00' : num.toString().padStart(2, '0');
-      top3.innerHTML = 'Расчет: ...';
+      top3.innerHTML = 'Расчёт: ...';
       const interval = setInterval(() => {
         const randomNums = Array.from({length: 3}, () => Math.floor(Math.random() * 37).toString().padStart(2, '0')).join(' ');
-        top3.innerHTML = `Расчет: ${randomNums}`;
+        top3.innerHTML = `Расчёт: ${randomNums}`;
       }, 200);
 
       try {
@@ -82,12 +98,12 @@
         if (data.top && data.top.length > 0) {
           top3.innerHTML = `Ответ: ${data.top.map(([n]) => n).join(' ')}`;
         } else {
-          top3.innerHTML = 'Нет данных';
+          top3.innerHTML = 'Нет данных для анализа';
         }
       } catch (e) {
         clearInterval(interval);
-        top3.innerHTML = 'Ошибка';
-        WebApp.showAlert(`Ошибка: ${e.message}\nОткрой Dashboard > Workers > Logs для деталей!`);
+        top3.innerHTML = 'Ошибка расчёта';
+        WebApp.showAlert(`Ошибка: ${e.message}`);
       }
     }
   </script>
