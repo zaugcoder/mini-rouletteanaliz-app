@@ -6,37 +6,21 @@
   <title>Рулетка Стол</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
-    body { 
-      background: linear-gradient(to bottom, #0F172A, #1E293B); color: #FFF; font-family: system-ui, -apple-system, sans-serif; text-align: center; padding: 10px 0; 
-      margin: 0; height: 100vh; overflow-y: auto; font-weight: 500;
-    }
-    h1 { font-size: 28px; margin: 12px 0 6px; font-weight: 600; }
-    .top3 { 
-      margin: 12px auto; font-size: 28px; font-weight: bold; background: #1E293B; padding: 12px 18px; border-radius: 28px; 
-      max-width: 350px; text-align: center; min-height: 56px; color: #F59E0B;
-    }
-    .table { 
-      display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; max-width: 300px; margin: 12px auto; 
-      padding: 6px; background: transparent;
-    }
-    .cell { 
-      background: #333; border: none; padding: 0; cursor: pointer; border-radius: 50%; 
-      font-size: 14px; font-weight: 600; aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center; 
-      transition: background 0.2s, transform 0.2s;
-    }
+    body { background: linear-gradient(to bottom, #0F172A, #1E293B); color: #FFF; font-family: system-ui; text-align: center; margin: 0; height: 100vh; overflow-y: auto; }
+    h1 { font-size: 28px; margin: 12px 0 6px; }
+    .top3 { font-size: 28px; font-weight: bold; background: #1E293B; padding: 12px 18px; border-radius: 28px; max-width: 350px; margin: 12px auto; min-height: 56px; color: #F59E0B; }
+    .table { display: grid; grid-template-columns: repeat(6, 1fr); gap: 4px; max-width: 300px; margin: 12px auto; }
+    .cell { background: #333; border-radius: 50%; font-size: 14px; font-weight: 600; aspect-ratio: 1/1; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: 0.2s; }
     .cell:hover { background: #F59E0B !important; color: #000; transform: scale(1.05); }
     .red { background: #EF4444; color: #FFF; }
-    .black { background: #000000; color: #FFF; }
-    .green { 
-      background: #22C55E; color: #000; border-radius: 50px; aspect-ratio: 2/1; grid-column: span 1; 
-      font-size: 18px; margin: 12px auto 0; width: 90px; 
-    }
+    .black { background: #000; color: #FFF; }
+    .green { background: #22C55E; color: #000; border-radius: 50px; aspect-ratio: 2/1; font-size: 18px; width: 90px; }
     .green-container { display: flex; justify-content: center; gap: 4px; grid-column: 1 / -1; }
   </style>
 </head>
 <body>
   <h1>🎰 Стол Рулетки</h1>
-  <div class="top3" id="top3">Наиболее вероятные числа: ...</div>
+  <div class="top3" id="top3">Наиболее вероятные: ...</div>
   <div class="table" id="table"></div>
 
   <script>
@@ -44,10 +28,8 @@
     WebApp.ready();
     WebApp.expand();
 
-    let history = [];
-    const WORKER_URL = 'https://analiz-bot.zaugoldima.workers.dev';  // Твой Worker URL
+    const WORKER_URL = 'https://analiz-bot.zaugoldima.workers.dev';
 
-    // Порядок и цвета как на скрине (красные/чёрные, 1-36 в 6 колонках)
     const numbers = [
       {num: 1, color: 'red'}, {num: 2, color: 'black'}, {num: 3, color: 'red'}, {num: 4, color: 'black'}, {num: 5, color: 'red'}, {num: 6, color: 'black'},
       {num: 7, color: 'red'}, {num: 8, color: 'black'}, {num: 9, color: 'red'}, {num: 10, color: 'black'}, {num: 11, color: 'black'}, {num: 12, color: 'red'},
@@ -60,7 +42,6 @@
     const table = document.getElementById('table');
     const top3 = document.getElementById('top3');
 
-    // Строим 1-36 в 6 колонках (6 рядов)
     numbers.forEach(item => {
       const cell = document.createElement('div');
       cell.className = `cell ${item.color}`;
@@ -69,7 +50,6 @@
       table.appendChild(cell);
     });
 
-    // Контейнер для 0 и 00 (рядом, овальные)
     const greenContainer = document.createElement('div');
     greenContainer.className = 'green-container';
     [{num: 0, color: 'green'}, {num: '00', color: 'green'}].forEach(item => {
@@ -82,12 +62,8 @@
     table.appendChild(greenContainer);
 
     async function analyzeNumber(num) {
-      let x;
-      if (num === 0 || num === '00') x = '00';
-      else x = num.toString().padStart(2, '0');
-
+      let x = (num === 0 || num === '00') ? '00' : num.toString().padStart(2, '0');
       top3.innerHTML = 'Расчет: ...';
-
       const interval = setInterval(() => {
         const randomNums = Array.from({length: 3}, () => Math.floor(Math.random() * 37).toString().padStart(2, '0')).join(' ');
         top3.innerHTML = `Расчет: ${randomNums}`;
@@ -99,38 +75,21 @@
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'get_top_after', number: x })
         });
-        if (!response.ok) {
-          const text = await response.text();
-          throw new Error(`Сеть: ${response.status} ${text}`);
-        }
-        const data = await response.json();
+        const text = await response.text();
+        if (!response.ok) throw new Error(`Сеть: ${response.status} — ${text}`);
+        const data = JSON.parse(text);
         clearInterval(interval);
         if (data.top && data.top.length > 0) {
-          const topText = data.top.map(([n]) => n).join(' ');
-          top3.innerHTML = `Ответ: ${topText}`;
+          top3.innerHTML = `Ответ: ${data.top.map(([n]) => n).join(' ')}`;
         } else {
-          top3.innerHTML = 'Нет данных для анализа';
+          top3.innerHTML = 'Нет данных';
         }
       } catch (e) {
         clearInterval(interval);
-        top3.innerHTML = 'Ошибка расчета';
-        WebApp.showAlert(`Ошибка: ${e.message}`);
+        top3.innerHTML = 'Ошибка';
+        WebApp.showAlert(`Ошибка: ${e.message}\nЛоги Worker проверь!`);
       }
     }
-
-    // Загрузка истории
-    fetch(WORKER_URL, { method: 'GET' })
-      .then(r => {
-        if (!r.ok) throw new Error('GET ошибка: ' + r.status);
-        return r.json();
-      })
-      .then(data => {
-        history = data.history || [];
-      })
-      .catch(e => {
-        console.log('Ошибка загрузки:', e);
-        WebApp.showAlert('Не удалось загрузить базу: ' + e.message);
-      });
   </script>
 </body>
 </html>
